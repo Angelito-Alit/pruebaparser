@@ -62,15 +62,15 @@ module.exports = {
       errors: 'iot-validation-errors'
     }
   },
-
+  */
   influxdb: {
     url: process.env.INFLUX_URL || 'http://localhost:8086',
     token: process.env.INFLUX_TOKEN,
-    org: process.env.INFLUX_ORG || 'your-org',
-    bucket: process.env.INFLUX_BUCKET || 'iot-data',
+    org: process.env.INFLUX_ORG ,
+    bucket: process.env.INFLUX_BUCKET,
     measurement: 'iot_telemetry'
   },
-  */
+
 
   // Statistics and Reporting
   stats: {

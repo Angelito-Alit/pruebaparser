@@ -2,7 +2,7 @@ const mqtt = require('mqtt');
 const fs = require('fs');
 const EventEmitter = require('eventemitter3');
 // const { Kafka } = require('kafkajs'); // Commented for future use
-// const { InfluxDB, Point } = require('@influxdata/influxdb-client'); // Commented for future use
+const { InfluxDB, Point } = require('@influxdata/influxdb-client'); // Commented for future use
 const { Worker } = require('worker_threads');
 const path = require('path');
 const Logger = require('./utils/logger');
@@ -55,14 +55,14 @@ class IotParser extends EventEmitter {
     */
 
     // Future Influx setup (commented)
-    /*
-    if (this.options.influxUrl && this.options.influxToken) {
+    
+     if (this.config.influxdb?.url && this.config.influxdb?.token) {
       this.influxClient = new InfluxDB({
         url: this.options.influxUrl,
         token: this.options.influxToken
       });
     }
-    */
+    
 
     // Auto-save stats every 5 minutes
     if (this.config.parser.enableStats) {
