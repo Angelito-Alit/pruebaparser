@@ -1,0 +1,43 @@
+{
+  "name": "iot-mqtt-parser",
+  "version": "1.0.0",
+  "description": "Reusable MQTT parser middleware for IoT telemetry with comprehensive logging and statistics",
+  "main": "src/parser.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "node test.js",
+    "stats": "node stats.js",
+    "report": "node stats.js report",
+    "csv": "node stats.js csv",
+    "live": "node stats.js live",
+    "clean": "node stats.js clean --days 7",
+    "simulate": "node simulator.js",
+    "simulate:burst": "node simulator.js --burst",
+    "simulate:continuous": "node simulator.js --continuous",
+    "help": "node simulator.js --help"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "eventemitter3": "^5.0.1",
+    "mqtt": "^5.8.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  },
+  "keywords": [
+    "iot",
+    "mqtt",
+    "parser",
+    "telemetry",
+    "sensors",
+    "data-validation",
+    "statistics",
+    "logging"
+  ],
+  "author": "Your Friend Grok",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
