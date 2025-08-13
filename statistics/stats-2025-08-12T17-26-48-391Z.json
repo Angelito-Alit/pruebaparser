@@ -1,0 +1,59 @@
+{
+  "summary": {
+    "totalLogs": 328,
+    "validMessages": 124,
+    "invalidMessages": 41,
+    "errors": 10,
+    "successRate": "37.80"
+  },
+  "timeRange": {
+    "firstLog": "2025-08-11T07:55:13.961Z",
+    "lastLog": "2025-08-12T17:21:20.452Z",
+    "durationHours": "33.44"
+  },
+  "messagesByLevel": {
+    "info": 153,
+    "success": 124,
+    "warn": 41,
+    "error": 10
+  },
+  "messagesByHour": {
+    "0": 3,
+    "1": 76,
+    "2": 2,
+    "4": 5,
+    "9": 10,
+    "10": 2,
+    "11": 5,
+    "19": 10,
+    "20": 70,
+    "21": 121,
+    "23": 24
+  },
+  "messagesByDay": {
+    "2025-08-11": 78,
+    "2025-08-12": 250
+  },
+  "sensorData": {
+    "temperatureStats": {
+      "min": 15.5,
+      "max": 39.6,
+      "avg": "26.90",
+      "count": 87
+    },
+    "humidityStats": {
+      "min": 20.5,
+      "max": 89.3,
+      "avg": "56.49",
+      "count": 87
+    },
+    "uniqueDevices": [
+      "550e8400-e29b-41d4-a716-446655440004",
+      "550e8400-e29b-41d4-a716-446655440002",
+      "550e8400-e29b-41d4-a716-446655440001",
+      "550e8400-e29b-41d4-a716-446655440003"
+    ],
+    "versions": {}
+  },
+  "validationErrors": {}
+}

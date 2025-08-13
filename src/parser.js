@@ -2,7 +2,7 @@ const mqtt = require('mqtt');
 const fs = require('fs');
 const EventEmitter = require('eventemitter3');
 // const { Kafka } = require('kafkajs'); // Commented for future use
-const { InfluxDB, Point } = require('@influxdata/influxdb-client'); // Commented for future use
+const { InfluxDB, Point } = require('@influxdata/influxdb-client');
 const { Worker } = require('worker_threads');
 const path = require('path');
 const Logger = require('./utils/logger');
@@ -17,12 +17,14 @@ class IotParser extends EventEmitter {
       mqtt: { ...config.mqtt, ...customOptions.mqtt },
       parser: { ...config.parser, ...customOptions.parser },
       validation: { ...config.validation, ...customOptions.validation },
-      logging: { ...config.logging, ...customOptions.logging }
+      logging: { ...config.logging, ...customOptions.logging },
+      influxdb: { ...config.influxdb, ...customOptions.influxdb }
     };
 
     this.mqttClient = null;
     // this.kafkaProducer = null; // Future use
-    // this.influxClient = null; // Future use
+    this.influxClient = null;
+    this.writeApi = null;
     this.workerPool = [];
 
     // Initialize logger
@@ -40,7 +42,9 @@ class IotParser extends EventEmitter {
 
     if (this.config.parser.useWorkers) {
       this.initWorkers(this.config.parser.numWorkers);
-    }    // Future Kafka setup (commented)
+    }
+
+    // Future Kafka setup (commented)
     /*
     if (this.options.kafkaBrokers && this.options.kafkaClientId) {
       const kafka = new Kafka({
@@ -54,21 +58,48 @@ class IotParser extends EventEmitter {
     }
     */
 
-    // Future Influx setup (commented)
-    
-     if (this.config.influxdb?.url && this.config.influxdb?.token) {
-      this.influxClient = new InfluxDB({
-        url: this.options.influxUrl,
-        token: this.options.influxToken
-      });
+    // InfluxDB setup - ACTIVADO
+    if (this.config.influxdb?.enabled && 
+        this.config.influxdb?.url && 
+        this.config.influxdb?.token) {
+      this.initInfluxDB();
     }
-    
 
     // Auto-save stats every 5 minutes
     if (this.config.parser.enableStats) {
       setInterval(() => {
         this.logger.saveStatsToFile();
       }, this.config.stats?.saveInterval || 5 * 60 * 1000);
+    }
+  }
+
+  initInfluxDB() {
+    try {
+      this.logger.info('Initializing InfluxDB connection', {
+        url: this.config.influxdb.url,
+        org: this.config.influxdb.org,
+        bucket: this.config.influxdb.bucket
+      });
+
+      this.influxClient = new InfluxDB({
+        url: this.config.influxdb.url,
+        token: this.config.influxdb.token
+      });
+
+      this.writeApi = this.influxClient.getWriteApi(
+        this.config.influxdb.org, 
+        this.config.influxdb.bucket
+      );
+
+      // Configurar opciones de escritura
+      this.writeApi.useDefaultTags({
+        source: 'iot-parser',
+        version: '1.0.0'
+      });
+
+      this.logger.success('InfluxDB client initialized successfully');
+    } catch (error) {
+      this.logger.error('Failed to initialize InfluxDB client', error);
     }
   }
 
@@ -203,18 +234,22 @@ class IotParser extends EventEmitter {
         const jsonData = JSON.parse(str);
 
         // Validate required JSON fields
-        if (!jsonData.uuid || !jsonData.timestamp) {
-          validationErrors.push('Missing required fields (uuid or timestamp) in JSON');
+        if (!jsonData.uuid && !jsonData.device_id && !jsonData.id) {
+          validationErrors.push('Missing required UUID field in JSON (uuid, device_id, or id)');
+          valid = false;
+        }
+        if (!jsonData.timestamp) {
+          validationErrors.push('Missing required timestamp field in JSON');
           valid = false;
         }
 
-        // Map JSON fields to our standard format
-        if (jsonData.uuid) data.uuid = jsonData.uuid;
-        if (jsonData.timestamp) data.timestamp = jsonData.timestamp;
-        if (jsonData.temperature !== undefined) data.temperature = jsonData.temperature;
-        if (jsonData.humidity !== undefined) data.humidity = jsonData.humidity;
-        if (jsonData.version) data.version = jsonData.version;
-        if (jsonData.actuator !== undefined) data.actuator = jsonData.actuator;
+        // Map JSON fields to our standard format (flexible field mapping)
+        data.uuid = jsonData.uuid || jsonData.device_id || jsonData.id;
+        data.timestamp = jsonData.timestamp;
+        data.temperature = jsonData.temperature || jsonData.temp;
+        data.humidity = jsonData.humidity || jsonData.humid;
+        data.version = jsonData.version || jsonData.ver;
+        data.actuator = jsonData.actuator;
 
       } catch (error) {
         validationErrors.push(`Invalid JSON format: ${error.message}`);
@@ -373,6 +408,43 @@ class IotParser extends EventEmitter {
     };
   }
 
+  async writeToInfluxDB(data) {
+    if (!this.writeApi) return;
+
+    try {
+      const point = new Point(this.config.influxdb.measurement)
+        .tag('device_uuid', data.uuid)
+        .tag('topic', data._topic)
+        .tag('format', data._format || 'pipe')
+        .intField('timestamp', data.timestamp)
+        .timestamp(new Date(data.timestamp * 1000));
+
+      // Agregar campos de sensor si están presentes
+      if (data.temperature !== undefined) {
+        point.floatField('temperature', data.temperature);
+      }
+      if (data.humidity !== undefined) {
+        point.floatField('humidity', data.humidity);
+      }
+      if (data.version) {
+        point.stringField('version', data.version);
+      }
+      if (data.actuator !== undefined) {
+        point.stringField('actuator', data.actuator.toString());
+      }
+
+      this.writeApi.writePoint(point);
+      
+      this.logger.debug('Data written to InfluxDB', {
+        uuid: data.uuid,
+        measurement: this.config.influxdb.measurement
+      });
+
+    } catch (error) {
+      this.logger.error('InfluxDB write error', error);
+    }
+  }
+
   handleParsed({ valid, data, original, validationErrors = [], processingTime = 0, topic = 'unknown', format = 'pipe' }) {
     if (valid) {
       this.logger.success('Message validated successfully', {
@@ -388,6 +460,13 @@ class IotParser extends EventEmitter {
       data._format = format;
       data._processingTime = processingTime;
 
+      // Write to InfluxDB if enabled
+      if (this.config.influxdb?.enabled && this.writeApi) {
+        this.writeToInfluxDB(data).catch(err => 
+          this.logger.error('InfluxDB write failed', err)
+        );
+      }
+
       // Emit success event
       this.emit('data', data);
 
@@ -401,22 +480,6 @@ class IotParser extends EventEmitter {
             value: JSON.stringify(data) 
           }]
         }).catch(err => this.logger.error('Kafka send error', err));
-      }
-      */
-
-      // Future Influx integration (commented)
-      /*
-      if (this.influxClient) {
-        const writeApi = this.influxClient.getWriteApi(this.options.influxOrg, this.options.influxBucket);
-        const point = new Point('iot_telemetry')
-          .tag('uuid', data.uuid)
-          .intField('timestamp', data.timestamp)
-          .floatField('temperature', data.temperature || 0)
-          .floatField('humidity', data.humidity || 0)
-          .stringField('actuator', data.actuator || '')
-          .stringField('version', data.version || '');
-        writeApi.writePoint(point);
-        writeApi.close().catch(err => this.logger.error('Influx write error', err));
       }
       */
 
@@ -449,11 +512,21 @@ class IotParser extends EventEmitter {
     return this.connected && this.mqttClient && this.mqttClient.connected;
   }
 
-  disconnect() {
+  async disconnect() {
     this.logger.info('Disconnecting IoT Parser');
 
     if (this.mqttClient) {
       this.mqttClient.end();
+    }
+
+    // Close InfluxDB connection
+    if (this.writeApi) {
+      try {
+        await this.writeApi.close();
+        this.logger.info('InfluxDB connection closed');
+      } catch (error) {
+        this.logger.error('Error closing InfluxDB connection', error);
+      }
     }
 
     // Future disconnections (commented)

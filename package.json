@@ -1,12 +1,13 @@
 {
   "name": "iot-mqtt-parser",
   "version": "1.0.0",
-  "description": "Reusable MQTT parser middleware for IoT telemetry with comprehensive logging and statistics",
+  "description": "Reusable MQTT parser middleware for IoT telemetry with comprehensive logging, statistics, and InfluxDB integration",
   "main": "src/parser.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test": "node test.js",
+    "test:influx": "node test-influx.js",
     "stats": "node stats.js",
     "report": "node stats.js report",
     "csv": "node stats.js csv",
@@ -15,7 +16,9 @@
     "simulate": "node simulator.js",
     "simulate:burst": "node simulator.js --burst",
     "simulate:continuous": "node simulator.js --continuous",
-    "help": "node simulator.js --help"
+    "simulate:test": "node test-simulator.js",
+    "setup": "chmod +x setup.sh && ./setup.sh",
+    "help": "echo '\n🤖 IoT Parser Commands:\n  npm start              - Start the parser\n  npm run dev            - Start with auto-restart\n  npm test               - Run validation tests\n  npm run test:influx    - Test InfluxDB connection\n  npm run stats          - Statistics CLI help\n  npm run simulate       - Standard simulation\n  npm run simulate:burst - Quick burst test\n  npm run help           - Show this help\n'"
   },
   "dependencies": {
     "@influxdata/influxdb-client": "^1.35.0",
@@ -34,7 +37,9 @@
     "sensors",
     "data-validation",
     "statistics",
-    "logging"
+    "logging",
+    "influxdb",
+    "time-series"
   ],
   "author": "Your Friend Grok",
   "license": "MIT",

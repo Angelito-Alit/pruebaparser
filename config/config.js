@@ -52,7 +52,17 @@ module.exports = {
     }
   },
 
-  // Future integrations (commented for now)
+  // InfluxDB Configuration - ACTIVADO
+  influxdb: {
+    enabled: process.env.INFLUX_ENABLED !== 'false', // Activado por defecto
+    url: process.env.INFLUX_URL || 'http://localhost:8086',
+    token: process.env.INFLUX_TOKEN,
+    org: process.env.INFLUX_ORG || 'iot-org',
+    bucket: process.env.INFLUX_BUCKET || 'iot-data',
+    measurement: 'iot_telemetry'
+  },
+
+  // Future Kafka integration (commented for now)
   /*
   kafka: {
     clientId: process.env.KAFKA_CLIENT_ID || 'iot-parser',
@@ -63,14 +73,6 @@ module.exports = {
     }
   },
   */
-  influxdb: {
-    url: process.env.INFLUX_URL || 'http://localhost:8086',
-    token: process.env.INFLUX_TOKEN,
-    org: process.env.INFLUX_ORG ,
-    bucket: process.env.INFLUX_BUCKET,
-    measurement: 'iot_telemetry'
-  },
-
 
   // Statistics and Reporting
   stats: {
